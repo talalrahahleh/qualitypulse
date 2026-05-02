@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QualityPulse — Fahrzeugqualitäts-Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #07090f;
+    --surface: #0e1117;
+    --card: #131a27;
+    --card2: #1a2338;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --blue: #0066CC;
+    --blue-light: #3d8fe0;
+    --blue-dim: rgba(0,102,204,0.15);
+    --blue-glow: rgba(0,102,204,0.35);
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #4a5568;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Inter', sans-serif;
+    --cond: 'Barlow Condensed', sans-serif;
+    --r: 8px;
+    --r2: 12px;
+    --sidebar: 220px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    display: flex;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: var(--sidebar);
+    min-height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0;
+    z-index: 100;
+  }
+  .sidebar-logo {
+    padding: 24px 20px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: var(--blue);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--cond);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    color: #fff;
+  }
+  .logo-text {
+    font-family: var(--cond);
+    font-weight: 600;
+    font-size: 17px;
+    letter-spacing: 0.5px;
+    color: var(--text);
+  }
+  .logo-sub {
+    font-size: 10px;
+    color: var(--text3);
+    font-family: var(--mono);
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+  }
+  .nav-section {
+    padding: 16px 12px 8px;
+    font-size: 9px;
+    font-family: var(--mono);
+    letter-spacing: 1.5px;
+    color: var(--text3);
+    text-transform: uppercase;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    margin: 1px 8px;
+    border-radius: var(--r);
+    cursor: pointer;
+    color: var(--text2);
+    font-size: 13px;
+    font-weight: 400;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+  }
+  .nav-item:hover { background: var(--card); color: var(--text); }
+  .nav-item.active {
+    background: var(--blue-dim);
+    color: var(--blue-light);
+    border-color: rgba(0,102,204,0.3);
+  }
+  .nav-icon {
+    width: 16px; height: 16px;
+    opacity: 0.7;
+    flex-shrink: 0;
+  }
+  .nav-item.active .nav-icon { opacity: 1; }
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .status-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── Main Content ── */
+  #main {
+    margin-left: var(--sidebar);
+    flex: 1;
+    padding: 0;
+    min-height: 100vh;
+  }
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .topbar-title {
+    font-family: var(--cond);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .topbar-sub { font-size: 12px; color: var(--text2); margin-top: 1px; }
+  .topbar-meta {
+    display: flex; align-items: center; gap: 16px;
+  }
+  .tag-pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 100px;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+  }
+  .tag-pill.live {
+    border-color: rgba(34,197,94,0.4);
+    color: var(--green);
+    background: rgba(34,197,94,0.08);
+  }
+
+  /* ── Sections ── */
+  .section { display: none; padding: 28px 32px 48px; }
+  .section.active { display: block; }
+
+  /* ── KPI Grid ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .kpi-card:hover { border-color: var(--border2); }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent-color, var(--blue));
+  }
+  .kpi-label {
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.5px;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .kpi-value {
+    font-family: var(--cond);
+    font-size: 36px;
+    font-weight: 600;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .kpi-change {
+    font-size: 12px;
+    display: flex; align-items: center; gap: 4px;
+    font-family: var(--mono);
+  }
+  .kpi-change.up { color: var(--red); }
+  .kpi-change.down { color: var(--green); }
+  .kpi-change.neutral { color: var(--text3); }
+
+  /* ── Chart Grid ── */
+  .chart-grid-2 {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+  .chart-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    padding: 20px;
+  }
+  .chart-title {
+    font-family: var(--cond);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .chart-sub {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+    margin-bottom: 16px;
+  }
+  .chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .legend-item {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px;
+    color: var(--text2);
+    font-family: var(--mono);
+  }
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 2px;
+  }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 8px 12px;
+    flex: 1;
+    max-width: 360px;
+    transition: border-color 0.2s;
+  }
+  .search-box:focus-within { border-color: var(--blue); }
+  .search-box input {
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 13px;
+    font-family: var(--sans);
+    width: 100%;
+  }
+  .search-box input::placeholder { color: var(--text3); }
+  .filter-select {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 8px 12px;
+    color: var(--text2);
+    font-size: 13px;
+    font-family: var(--sans);
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .filter-select:focus { border-color: var(--blue); color: var(--text); }
+  .btn {
+    padding: 8px 16px;
+    border-radius: var(--r);
+    font-size: 12px;
+    font-family: var(--mono);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+  }
+  .btn:hover { background: var(--card2); color: var(--text); }
+  .btn-primary {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--blue-light); border-color: var(--blue-light); }
+  .result-count {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text3);
+    margin-left: auto;
+  }
+
+  /* ── Table ── */
+  .table-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    overflow: hidden;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead th {
+    background: var(--card2);
+    padding: 11px 14px;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.8px;
+    color: var(--text3);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: color 0.15s;
+  }
+  thead th:hover { color: var(--text2); }
+  thead th.sort-active { color: var(--blue-light); }
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.12s;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--card2); }
+  tbody td { padding: 10px 14px; color: var(--text2); }
+  tbody td.mono { font-family: var(--mono); font-size: 12px; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 100px;
+    font-size: 10px;
+    font-family: var(--mono);
+    letter-spacing: 0.3px;
+    font-weight: 500;
+    border: 1px solid transparent;
+  }
+  .badge-critical { background: rgba(239,68,68,0.15); color: #f87171; border-color: rgba(239,68,68,0.3); }
+  .badge-high { background: rgba(245,158,11,0.15); color: #fbbf24; border-color: rgba(245,158,11,0.3); }
+  .badge-medium { background: rgba(0,102,204,0.15); color: #60a5fa; border-color: rgba(0,102,204,0.3); }
+  .badge-low { background: rgba(34,197,94,0.1); color: #4ade80; border-color: rgba(34,197,94,0.25); }
+  .badge-open { background: rgba(239,68,68,0.1); color: #fca5a5; border-color: rgba(239,68,68,0.2); }
+  .badge-progress { background: rgba(245,158,11,0.1); color: #fcd34d; border-color: rgba(245,158,11,0.2); }
+  .badge-resolved { background: rgba(34,197,94,0.1); color: #86efac; border-color: rgba(34,197,94,0.2); }
+  .badge-closed { background: rgba(100,116,139,0.15); color: #94a3b8; border-color: rgba(100,116,139,0.2); }
+  .table-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--card2);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .page-btns { display: flex; gap: 4px; }
+  .page-btn {
+    padding: 4px 9px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    font-family: var(--mono);
+    font-size: 11px;
+    transition: all 0.12s;
+  }
+  .page-btn:hover { background: var(--card); }
+  .page-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+  /* ── SQL Explorer ── */
+  .sql-editor-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .sql-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--card2);
+    border-bottom: 1px solid var(--border);
+  }
+  .sql-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .sql-textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #a5f3fc;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.7;
+    padding: 16px;
+    resize: vertical;
+    min-height: 120px;
+    caret-color: var(--blue-light);
+  }
+  .sql-schema {
+    display: flex;
+    gap: 16px;
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+    background: rgba(0,0,0,0.2);
+    flex-wrap: wrap;
+  }
+  .schema-table { flex: 1; min-width: 180px; }
+  .schema-table-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--blue-light);
+    margin-bottom: 6px;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .schema-col {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    padding: 2px 0;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .schema-type {
+    color: #f9a8d4;
+    font-size: 9px;
+  }
+  .sql-results {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--r2);
+    overflow: hidden;
+  }
+  .sql-results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--card2);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .sql-results-header .exec-time {
+    color: var(--green);
+  }
+  .sql-error {
+    padding: 16px;
+    color: #fca5a5;
+    font-family: var(--mono);
+    font-size: 12px;
+    background: rgba(239,68,68,0.06);
+  }
+  .query-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .query-chip:hover { border-color: var(--blue); color: var(--blue-light); }
+
+  /* ── Analytics section ── */
+  .section-header {
+    margin-bottom: 20px;
+  }
+  .section-title {
+    font-family: var(--cond);
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+  }
+  .section-sub { font-size: 12px; color: var(--text2); }
+
+  /* ── Empty / Loading ── */
+  .empty-state {
+    padding: 48px;
+    text-align: center;
+    color: var(--text3);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+  /* ── Animations ── */
+  .fade-in { animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* ── Dashboard recent table ── */
+  .recent-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-badge">
+      <div class="logo-icon">QP</div>
+      <div>
+        <div class="logo-text">QualityPulse</div>
+      </div>
+    </div>
+    <div class="logo-sub">FAHRZEUGQUALITÄT v2.4.1</div>
+  </div>
+
+  <div class="nav-section">Main</div>
+  <div class="nav-item active" onclick="navigate('dashboard')">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/>
+      <rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/>
+    </svg>
+    Dashboard
+  </div>
+  <div class="nav-item" onclick="navigate('tracker')">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="1" y="3" width="14" height="10" rx="1.5"/>
+      <line x1="1" y1="6.5" x2="15" y2="6.5"/>
+      <line x1="5" y1="3" x2="5" y2="13"/>
+    </svg>
+    Defect Tracker
+  </div>
+  <div class="nav-item" onclick="navigate('analytics')">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+      <polyline points="1,12 5,7 8,9 11,4 15,6"/>
+      <line x1="1" y1="15" x2="15" y2="15"/>
+    </svg>
+    Analytics
+  </div>
+  <div class="nav-item" onclick="navigate('sql')">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+      <polyline points="4,5 1,8 4,11"/>
+      <polyline points="12,5 15,8 12,11"/>
+      <line x1="9" y1="2" x2="7" y2="14"/>
+    </svg>
+    SQL Explorer
+  </div>
+
+  <div class="nav-section">Data</div>
+  <div class="nav-item" onclick="navigate('tracker')">
+    <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="8" cy="8" r="6"/>
+      <line x1="8" y1="5" x2="8" y2="8"/>
+      <line x1="8" y1="8" x2="10.5" y2="10.5"/>
+    </svg>
+    Live Records
+  </div>
+
+  <div class="sidebar-footer">
+    <div style="font-size:11px; color:var(--text3); font-family:var(--mono); display:flex; align-items:center;">
+      <span class="status-dot"></span>System Online
+    </div>
+    <div style="font-size:10px; color:var(--text3); margin-top:4px; font-family:var(--mono);">
+      Standort: Regensburg
+    </div>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<main id="main">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="topbar-title">Dashboard Overview</div>
+      <div class="topbar-sub" id="topbar-sub">Gesamtfahrzeugqualität — Regensburg Plant</div>
+    </div>
+    <div class="topbar-meta">
+      <span class="tag-pill live"><span class="status-dot"></span>Live</span>
+      <span class="tag-pill" id="clock">--:--:--</span>
+      <span class="tag-pill">KW 18 / 2025</span>
+    </div>
+  </div>
+
+  <!-- ── DASHBOARD ── -->
+  <section id="section-dashboard" class="section active fade-in">
+
+    <div class="kpi-grid">
+      <div class="kpi-card" style="--accent-color:var(--red)">
+        <div class="kpi-label">Total Defects</div>
+        <div class="kpi-value" id="kpi-total" style="color:var(--text)">0</div>
+        <div class="kpi-change up" id="kpi-total-sub">↑ 4.2% vs last week</div>
+      </div>
+      <div class="kpi-card" style="--accent-color:var(--amber)">
+        <div class="kpi-label">Critical / High</div>
+        <div class="kpi-value" id="kpi-critical" style="color:var(--red)">0</div>
+        <div class="kpi-change up">↑ 2 new critical today</div>
+      </div>
+      <div class="kpi-card" style="--accent-color:var(--green)">
+        <div class="kpi-label">Resolution Rate</div>
+        <div class="kpi-value" id="kpi-rate" style="color:var(--green)">0%</div>
+        <div class="kpi-change down">↑ +3.1% this month</div>
+      </div>
+      <div class="kpi-card" style="--accent-color:var(--blue)">
+        <div class="kpi-label">Avg. Resolution (hrs)</div>
+        <div class="kpi-value" id="kpi-avg" style="color:var(--blue-light)">0</div>
+        <div class="kpi-change down">↓ −8h improved</div>
+      </div>
+    </div>
+
+    <div class="chart-grid-2">
+      <div class="chart-card">
+        <div class="chart-title">Weekly Defect Volume</div>
+        <div class="chart-sub">LAST 12 WEEKS · ALL MODELS</div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#3d8fe0"></div>New Defects</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Resolved</div>
+        </div>
+        <div style="position:relative; height:200px;">
+          <canvas id="trendChart" role="img" aria-label="Line chart showing weekly defect volume over 12 weeks">Weekly defect trends over 12 weeks.</canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Defects by Model</div>
+        <div class="chart-sub">CURRENT OPEN DEFECTS</div>
+        <div style="position:relative; height:220px;">
+          <canvas id="modelChart" role="img" aria-label="Bar chart of open defects by BMW model">Open defects by vehicle model.</canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="recent-grid">
+      <div class="chart-card">
+        <div class="chart-title" style="margin-bottom:14px;">Recent Critical Defects</div>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Description</th><th>Model</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="recent-tbody"></tbody>
+        </table>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Component Distribution</div>
+        <div class="chart-sub">% OF ALL OPEN DEFECTS</div>
+        <div style="position:relative; height:190px; margin-top:6px;">
+          <canvas id="compChart" role="img" aria-label="Doughnut chart of defects by vehicle component">Defects by component category.</canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── DEFECT TRACKER ── -->
+  <section id="section-tracker" class="section fade-in">
+    <div class="section-header">
+      <div class="section-title">Defect Tracker</div>
+      <div class="section-sub">All defect records · Filter, sort and search the full dataset</div>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--text3)" stroke-width="1.5">
+          <circle cx="7" cy="7" r="5"/><line x1="11" y1="11" x2="15" y2="15"/>
+        </svg>
+        <input type="text" id="search-input" placeholder="Search defects, IDs, components..." oninput="filterTable()">
+      </div>
+      <select class="filter-select" id="filter-severity" onchange="filterTable()">
+        <option value="">All Severities</option>
+        <option value="Critical">Critical</option>
+        <option value="High">High</option>
+        <option value="Medium">Medium</option>
+        <option value="Low">Low</option>
+      </select>
+      <select class="filter-select" id="filter-model" onchange="filterTable()">
+        <option value="">All Models</option>
+        <option value="BMW 3 Series">BMW 3 Series</option>
+        <option value="BMW 5 Series">BMW 5 Series</option>
+        <option value="BMW X3">BMW X3</option>
+        <option value="BMW X5">BMW X5</option>
+        <option value="BMW 7 Series">BMW 7 Series</option>
+        <option value="BMW i4">BMW i4</option>
+        <option value="BMW iX">BMW iX</option>
+      </select>
+      <select class="filter-select" id="filter-status" onchange="filterTable()">
+        <option value="">All Status</option>
+        <option value="Open">Open</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Resolved">Resolved</option>
+        <option value="Closed">Closed</option>
+      </select>
+      <button class="btn" onclick="resetFilters()">Reset</button>
+      <span class="result-count" id="result-count"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortTable('id')">DEF-ID <span id="sort-id"></span></th>
+            <th onclick="sortTable('description')">Description</th>
+            <th onclick="sortTable('model')">Model <span id="sort-model"></span></th>
+            <th onclick="sortTable('component')">Component <span id="sort-component"></span></th>
+            <th onclick="sortTable('severity')">Severity <span id="sort-severity"></span></th>
+            <th onclick="sortTable('status')">Status <span id="sort-status"></span></th>
+            <th onclick="sortTable('assignee')">Assignee</th>
+            <th onclick="sortTable('created')">Created <span id="sort-created"></span></th>
+            <th onclick="sortTable('resolution_hrs')">Res. (hrs) <span id="sort-resolution_hrs"></span></th>
+          </tr>
+        </thead>
+        <tbody id="tracker-tbody"></tbody>
+      </table>
+      <div class="table-pagination">
+        <span id="page-info">Showing 1–20 of 60</span>
+        <div class="page-btns" id="page-btns"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── ANALYTICS ── -->
+  <section id="section-analytics" class="section fade-in">
+    <div class="section-header">
+      <div class="section-title">Analytics & Trends</div>
+      <div class="section-sub">Quality metrics visualized across models, components, and time</div>
+    </div>
+
+    <div class="chart-grid-3">
+      <div class="chart-card">
+        <div class="chart-title">Defects by Severity</div>
+        <div class="chart-sub">DISTRIBUTION ACROSS ALL RECORDS</div>
+        <div style="position:relative; height:200px;">
+          <canvas id="sevChart" role="img" aria-label="Doughnut chart showing defects split by severity level">Defects by severity: Critical, High, Medium, Low.</canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Resolution Rate by Model</div>
+        <div class="chart-sub">% DEFECTS RESOLVED OR CLOSED</div>
+        <div style="position:relative; height:200px;">
+          <canvas id="resChart" role="img" aria-label="Horizontal bar chart of resolution rates by BMW model">Resolution rates per vehicle model.</canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Monthly Volume Trend</div>
+        <div class="chart-sub">JAN – DEC 2024 · ALL SEVERITIES</div>
+        <div style="position:relative; height:200px;">
+          <canvas id="monthChart" role="img" aria-label="Area chart of monthly defect volume for 2024">Monthly defect volumes throughout 2024.</canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-grid-2">
+      <div class="chart-card">
+        <div class="chart-title">Defects by Component Category</div>
+        <div class="chart-sub">HORIZONTAL BREAKDOWN</div>
+        <div style="position:relative; height:260px;">
+          <canvas id="catChart" role="img" aria-label="Horizontal bar chart of defects by component category">Component category breakdown of all defects.</canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Avg. Resolution Time by Severity</div>
+        <div class="chart-sub">HOURS TO RESOLUTION</div>
+        <div style="position:relative; height:260px;">
+          <canvas id="rtimeChart" role="img" aria-label="Bar chart of average resolution hours by severity level">Average resolution time per severity level.</canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SQL EXPLORER ── -->
+  <section id="section-sql" class="section fade-in">
+    <div class="section-header">
+      <div class="section-title">SQL Explorer</div>
+      <div class="section-sub">Execute SQL queries against the quality defect database · Oracle SQL syntax supported</div>
+    </div>
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;">
+      <div class="query-chip" onclick="setQuery(`SELECT * FROM defects WHERE severity = 'Critical' ORDER BY created DESC`)">All Critical Defects ↗</div>
+      <div class="query-chip" onclick="setQuery(`SELECT model, COUNT(*) AS total_defects FROM defects GROUP BY model ORDER BY total_defects DESC`)">Defects by Model ↗</div>
+      <div class="query-chip" onclick="setQuery(`SELECT component, COUNT(*) AS count, AVG(resolution_hrs) AS avg_hrs FROM defects GROUP BY component ORDER BY count DESC`)">Component Stats ↗</div>
+      <div class="query-chip" onclick="setQuery(`SELECT * FROM defects WHERE status = 'Open' AND model = 'BMW iX'`)">Open iX Issues ↗</div>
+      <div class="query-chip" onclick="setQuery(`SELECT severity, COUNT(*) AS count FROM defects WHERE status != 'Closed' GROUP BY severity ORDER BY count DESC`)">Open by Severity ↗</div>
+      <div class="query-chip" onclick="setQuery(`SELECT * FROM defects WHERE component LIKE 'Electronics' ORDER BY created DESC LIMIT 10`)">Recent Electronics ↗</div>
+    </div>
+
+    <div class="sql-editor-wrap">
+      <div class="sql-toolbar">
+        <div class="sql-dot" style="background:#ef4444"></div>
+        <div class="sql-dot" style="background:#f59e0b"></div>
+        <div class="sql-dot" style="background:#22c55e"></div>
+        <span style="font-family:var(--mono); font-size:11px; color:var(--text3); margin-left:8px;">DEFECTS_DB · Oracle SQL</span>
+        <button class="btn btn-primary" style="margin-left:auto; padding:5px 14px;" onclick="runSQL()">▶ Run Query</button>
+      </div>
+      <textarea id="sql-input" class="sql-textarea" spellcheck="false" placeholder="SELECT * FROM defects WHERE severity = 'Critical' LIMIT 10">SELECT * FROM defects WHERE severity = 'Critical' ORDER BY created DESC</textarea>
+      <div class="sql-schema">
+        <div class="schema-table">
+          <div class="schema-table-name">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="10" height="10" rx="1"/><line x1="1" y1="4.5" x2="11" y2="4.5"/></svg>
+            DEFECTS
+          </div>
+          <div class="schema-col">id <span class="schema-type">VARCHAR2(12)</span></div>
+          <div class="schema-col">description <span class="schema-type">VARCHAR2(200)</span></div>
+          <div class="schema-col">model <span class="schema-type">VARCHAR2(30)</span></div>
+          <div class="schema-col">component <span class="schema-type">VARCHAR2(30)</span></div>
+          <div class="schema-col">severity <span class="schema-type">VARCHAR2(10)</span></div>
+          <div class="schema-col">status <span class="schema-type">VARCHAR2(15)</span></div>
+          <div class="schema-col">assignee <span class="schema-type">VARCHAR2(30)</span></div>
+          <div class="schema-col">created <span class="schema-type">DATE</span></div>
+          <div class="schema-col">resolution_hrs <span class="schema-type">NUMBER</span></div>
+        </div>
+        <div class="schema-table" style="border-left:1px solid var(--border); padding-left:16px;">
+          <div class="schema-table-name" style="color:var(--text3); margin-bottom:8px; font-size:10px;">SUPPORTED SYNTAX</div>
+          <div class="schema-col" style="color:var(--text3); font-size:10px;">SELECT col, ... | *</div>
+          <div class="schema-col" style="color:var(--text3); font-size:10px;">FROM defects</div>
+          <div class="schema-col" style="color:var(--text3); font-size:10px;">WHERE col = 'val'</div>
+          <div class="schema-col" style="color:var(--text3); font-size:10px;">WHERE col LIKE 'val'</div>
+          <div class="schema-col" style="color:var(--text3); font-size:10px;">AND / OR conditions</div>
+          <div class="schema-col" style="color:var(--text3); font-size:10px;">GROUP BY col</div>
+          <div class="schema-col" style="color:var(--text3); font-size:10px;">COUNT(*), AVG(col)</div>
+          <div class="schema-col" style="color:var(--text3); font-size:10px;">ORDER BY col ASC|DESC</div>
+          <div class="schema-col" style="color:var(--text3); font-size:10px;">LIMIT n</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sql-results" id="sql-results">
+      <div class="sql-results-header">
+        <span id="sql-result-info">Run a query to see results</span>
+        <span class="exec-time" id="sql-exec-time"></span>
+      </div>
+      <div id="sql-result-body" class="empty-state">No results yet — execute a query above.</div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+// ── DATA ── //
+const MODELS = ['BMW 3 Series','BMW 5 Series','BMW X3','BMW X5','BMW 7 Series','BMW i4','BMW iX'];
+const COMPONENTS = ['Electronics','Powertrain','ADAS / Safety','Body & Chassis','Interior / HMI','Connectivity','Display System'];
+const SEVERITIES = ['Critical','High','Medium','Low'];
+const STATUSES = ['Open','In Progress','Resolved','Closed'];
+const ASSIGNEES = ['M. Fischer','J. Müller','A. Schneider','L. Weber','K. Bauer','T. Hoffmann','S. Richter','P. Koch','N. Wagner'];
+const DESCRIPTIONS = {
+  Electronics: ['ECU voltage spike on cold start','CAN bus timeout under load','Alternator output fluctuation','Body control module reset loop','Rear PDC sensor dropout','Parking assist EMI interference','Battery management system fault'],
+  Powertrain: ['Transmission jerk at 2nd gear shift','Engine misfire at idle (cyl. 3)','Oil pressure warning intermittent','Throttle response lag after restart','Turbo boost pressure deviation','Fuel injector seal micro-leak','Coolant temp sensor false reading'],
+  'ADAS / Safety': ['Lane-keeping assist ghost correction','Emergency brake false positive','Blind-spot radar occlusion at speed','Adaptive cruise loses target in rain','Surround-view camera calibration drift','Night vision contrast loss','Cross-traffic alert missed detection'],
+  'Body & Chassis': ['Trunk lid rattle over cobblestones','Sunroof wind noise at highway speed','Front door seal gap 2.3mm over spec','Rear axle subframe bushing creak','Hood alignment deviation 1.1mm','Side-mirror vibration at 120 km/h','Door handle micro-play'],
+  'Interior / HMI': ['Ambient lighting flicker in zone 3','HVAC fan noise level exceeded spec','Seat memory reset after sleep mode','Leather trim gap on B-pillar','Steering wheel paddle hesitation','Voice assistant command latency','Infotainment restart loop on boot'],
+  Connectivity: ['Bluetooth audio dropout at 8m','Apple CarPlay USB-C intermittent','OTA update rollback on signal loss','Wi-Fi hotspot auth token expiry','Remote key fob range reduced','Over-the-air diagnostics sync fail','Hotspot IP assignment conflict'],
+  'Display System': ['iDrive touchscreen dead zone (lower-left)','HUD brightness auto-adjust lag','Digital cluster refresh rate stutter','Night mode contrast below spec','Instrument cluster backlight bleed','Navigation tile load delay','Heads-up AR lane overlay flicker']
+};
+
+function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function randInt(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+function dateStr(daysAgo) {
+  const d = new Date(); d.setDate(d.getDate() - daysAgo);
+  return d.toISOString().slice(0, 10);
+}
+function resHours(sev, status) {
+  if (status === 'Open' || status === 'In Progress') return null;
+  const base = { Critical: 18, High: 36, Medium: 72, Low: 120 };
+  return Math.round(base[sev] * (0.6 + Math.random() * 0.9));
+}
+
+const DEFECTS = Array.from({ length: 60 }, (_, i) => {
+  const model = rand(MODELS);
+  const component = rand(COMPONENTS);
+  const severity = SEVERITIES[Math.floor(Math.pow(Math.random(), 1.4) * 4)];
+  const status = rand(STATUSES);
+  const desc = rand(DESCRIPTIONS[component]);
+  const daysAgo = randInt(1, 90);
+  return {
+    id: `DEF-${String(1000 + i).slice(1)}`,
+    description: desc,
+    model,
+    component,
+    severity,
+    status,
+    assignee: rand(ASSIGNEES),
+    created: dateStr(daysAgo),
+    resolution_hrs: resHours(severity, status)
+  };
+});
+DEFECTS.sort((a, b) => b.created.localeCompare(a.created));
+
+// ── KPI Computation ── //
+const totalDefects = DEFECTS.length;
+const criticalHigh = DEFECTS.filter(d => d.severity === 'Critical' || d.severity === 'High').length;
+const resolvedClosed = DEFECTS.filter(d => d.status === 'Resolved' || d.status === 'Closed').length;
+const ratePercent = Math.round((resolvedClosed / totalDefects) * 100);
+const resolvedWithTime = DEFECTS.filter(d => d.resolution_hrs != null);
+const avgResolution = resolvedWithTime.length
+  ? Math.round(resolvedWithTime.reduce((s, d) => s + d.resolution_hrs, 0) / resolvedWithTime.length)
+  : 0;
+
+// ── Animated Counter ── //
+function animateCounter(elId, target, suffix = '') {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  let start = 0;
+  const step = Math.ceil(target / 40);
+  const iv = setInterval(() => {
+    start = Math.min(start + step, target);
+    el.textContent = start + suffix;
+    if (start >= target) clearInterval(iv);
+  }, 18);
+}
+
+// ── Badge helpers ── //
+function sevBadge(s) { return `<span class="badge badge-${s.toLowerCase()}">${s}</span>`; }
+function statusBadge(s) {
+  const cls = { Open: 'open', 'In Progress': 'progress', Resolved: 'resolved', Closed: 'closed' }[s] || 'open';
+  return `<span class="badge badge-${cls}">${s}</span>`;
+}
+
+// ── Clock ── //
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('de-DE');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Navigation ── //
+const TITLES = {
+  dashboard: ['Dashboard Overview', 'Gesamtfahrzeugqualität — Regensburg Plant'],
+  tracker: ['Defect Tracker', 'All defect records · Real-time quality data'],
+  analytics: ['Analytics & Trends', 'Quality metrics visualized across time and models'],
+  sql: ['SQL Explorer', 'Query the quality defect database']
+};
+function navigate(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const section = document.getElementById(`section-${id}`);
+  section.classList.add('active');
+  section.classList.remove('fade-in');
+  void section.offsetWidth;
+  section.classList.add('fade-in');
+  const navItems = document.querySelectorAll('.nav-item');
+  const idx = ['dashboard','tracker','analytics','sql'].indexOf(id);
+  if (idx >= 0 && idx < 4) navItems[idx + 2].classList.add('active'); // +2 for section headers
+  else navItems[idx].classList.add('active');
+  document.getElementById('topbar-title').textContent = TITLES[id][0];
+  document.getElementById('topbar-sub').textContent = TITLES[id][1];
+  if (id === 'analytics') buildAnalyticsCharts();
+}
+
+// ── Dashboard Charts ── //
+let trendBuilt = false, modelBuilt = false, compBuilt = false;
+
+function buildDashboardCharts() {
+  if (trendBuilt) return;
+  trendBuilt = true;
+
+  const weeks = ['W7','W8','W9','W10','W11','W12','W13','W14','W15','W16','W17','W18'];
+  const newD = [18,22,15,28,20,17,24,19,23,16,21,14];
+  const resD = [12,16,18,21,17,19,22,20,25,18,24,17];
+  new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+      labels: weeks,
+      datasets: [
+        { label: 'New', data: newD, borderColor: '#3d8fe0', backgroundColor: 'rgba(61,143,224,0.12)', borderWidth: 2, pointRadius: 3, fill: true, tension: 0.35, pointBackgroundColor: '#3d8fe0' },
+        { label: 'Resolved', data: resD, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', borderWidth: 2, pointRadius: 3, fill: true, tension: 0.35, pointBackgroundColor: '#22c55e' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#4a5568', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#4a5568', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true }
+      }
+    }
+  });
+
+  const modelCounts = {};
+  MODELS.forEach(m => { modelCounts[m] = DEFECTS.filter(d => d.model === m && (d.status === 'Open' || d.status === 'In Progress')).length; });
+  new Chart(document.getElementById('modelChart'), {
+    type: 'bar',
+    data: {
+      labels: MODELS.map(m => m.replace('BMW ', '')),
+      datasets: [{ data: MODELS.map(m => modelCounts[m]), backgroundColor: ['#ef4444','#f59e0b','#3d8fe0','#a78bfa','#22c55e','#f472b6','#34d399'], borderRadius: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#4a5568', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { display: false } },
+        y: { ticks: { color: '#4a5568', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true }
+      }
+    }
+  });
+
+  const compCounts = {};
+  COMPONENTS.forEach(c => { compCounts[c] = DEFECTS.filter(d => d.component === c && d.status === 'Open').length; });
+  new Chart(document.getElementById('compChart'), {
+    type: 'doughnut',
+    data: {
+      labels: COMPONENTS.map(c => c.split('/')[0].trim()),
+      datasets: [{ data: COMPONENTS.map(c => compCounts[c]), backgroundColor: ['#3d8fe0','#ef4444','#f59e0b','#22c55e','#a78bfa','#f472b6','#34d399'], borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { family: 'IBM Plex Mono', size: 10 }, boxWidth: 10, padding: 8 } } },
+      cutout: '62%'
+    }
+  });
+}
+
+// ── Recent Defects ── //
+function buildRecentTable() {
+  const crit = DEFECTS.filter(d => d.severity === 'Critical').slice(0, 6);
+  const tbody = document.getElementById('recent-tbody');
+  tbody.innerHTML = crit.map(d => `
+    <tr>
+      <td class="mono" style="color:var(--blue-light)">${d.id}</td>
+      <td style="max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${d.description}</td>
+      <td style="color:var(--text2); font-size:12px;">${d.model.replace('BMW ','')}</td>
+      <td>${statusBadge(d.status)}</td>
+    </tr>`).join('');
+}
+
+// ── Tracker Table ── //
+let filteredData = [...DEFECTS];
+let sortKey = 'created', sortDir = -1, currentPage = 1;
+const PAGE_SIZE = 15;
+
+function filterTable() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const sev = document.getElementById('filter-severity').value;
+  const model = document.getElementById('filter-model').value;
+  const status = document.getElementById('filter-status').value;
+  filteredData = DEFECTS.filter(d => {
+    const q = !search || Object.values(d).join(' ').toLowerCase().includes(search);
+    const sv = !sev || d.severity === sev;
+    const mo = !model || d.model === model;
+    const st = !status || d.status === status;
+    return q && sv && mo && st;
+  });
+  currentPage = 1;
+  renderTracker();
+}
+
+function resetFilters() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('filter-severity').value = '';
+  document.getElementById('filter-model').value = '';
+  document.getElementById('filter-status').value = '';
+  filteredData = [...DEFECTS];
+  currentPage = 1;
+  renderTracker();
+}
+
+function sortTable(key) {
+  if (sortKey === key) sortDir *= -1;
+  else { sortKey = key; sortDir = 1; }
+  filteredData.sort((a, b) => {
+    const av = a[key] ?? '', bv = b[key] ?? '';
+    if (av < bv) return -sortDir;
+    if (av > bv) return sortDir;
+    return 0;
+  });
+  document.querySelectorAll('thead th span').forEach(s => s.textContent = '');
+  const el = document.getElementById(`sort-${key}`);
+  if (el) el.textContent = sortDir === 1 ? ' ▲' : ' ▼';
+  renderTracker();
+}
+
+function renderTracker() {
+  const tbody = document.getElementById('tracker-tbody');
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const page = filteredData.slice(start, start + PAGE_SIZE);
+  if (page.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="9" class="empty-state">No defects match your filters.</td></tr>`;
+  } else {
+    tbody.innerHTML = page.map(d => `
+      <tr>
+        <td class="mono" style="color:var(--blue-light); white-space:nowrap">${d.id}</td>
+        <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${d.description}">${d.description}</td>
+        <td style="white-space:nowrap; font-size:12px;">${d.model}</td>
+        <td style="font-size:12px; white-space:nowrap;">${d.component}</td>
+        <td>${sevBadge(d.severity)}</td>
+        <td>${statusBadge(d.status)}</td>
+        <td style="font-size:12px; white-space:nowrap;">${d.assignee}</td>
+        <td class="mono" style="font-size:11px; white-space:nowrap">${d.created}</td>
+        <td class="mono" style="font-size:11px; text-align:right">${d.resolution_hrs != null ? d.resolution_hrs + 'h' : '—'}</td>
+      </tr>`).join('');
+  }
+  document.getElementById('result-count').textContent = `${filteredData.length} results`;
+  const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+  document.getElementById('page-info').textContent = `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, filteredData.length)} of ${filteredData.length}`;
+  const btnContainer = document.getElementById('page-btns');
+  btnContainer.innerHTML = '';
+  for (let p = 1; p <= totalPages; p++) {
+    const btn = document.createElement('button');
+    btn.className = 'page-btn' + (p === currentPage ? ' active' : '');
+    btn.textContent = p;
+    btn.onclick = () => { currentPage = p; renderTracker(); };
+    btnContainer.appendChild(btn);
+  }
+}
+
+// ── Analytics Charts ── //
+let analyticsBuilt = false;
+function buildAnalyticsCharts() {
+  if (analyticsBuilt) return;
+  analyticsBuilt = true;
+
+  const sevCounts = SEVERITIES.map(s => DEFECTS.filter(d => d.severity === s).length);
+  new Chart(document.getElementById('sevChart'), {
+    type: 'doughnut',
+    data: {
+      labels: SEVERITIES,
+      datasets: [{ data: sevCounts, backgroundColor: ['#ef4444','#f59e0b','#3d8fe0','#22c55e'], borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { family: 'IBM Plex Mono', size: 10 }, boxWidth: 10, padding: 8 } } },
+      cutout: '58%'
+    }
+  });
+
+  const resRates = MODELS.map(m => {
+    const total = DEFECTS.filter(d => d.model === m).length;
+    const res = DEFECTS.filter(d => d.model === m && (d.status === 'Resolved' || d.status === 'Closed')).length;
+    return total ? Math.round((res / total) * 100) : 0;
+  });
+  new Chart(document.getElementById('resChart'), {
+    type: 'bar',
+    data: {
+      labels: MODELS.map(m => m.replace('BMW ', '')),
+      datasets: [{ data: resRates, backgroundColor: resRates.map(r => r >= 60 ? '#22c55e' : r >= 40 ? '#f59e0b' : '#ef4444'), borderRadius: 4 }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { max: 100, ticks: { callback: v => v + '%', color: '#4a5568', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' } },
+        y: { ticks: { color: '#94a3b8', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { display: false } }
+      }
+    }
+  });
+
+  const monthlyData = [14,19,22,17,25,28,20,23,18,21,16,12];
+  new Chart(document.getElementById('monthChart'), {
+    type: 'line',
+    data: {
+      labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+      datasets: [{
+        data: monthlyData,
+        borderColor: '#3d8fe0',
+        backgroundColor: 'rgba(61,143,224,0.15)',
+        borderWidth: 2, fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#3d8fe0'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#4a5568', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#4a5568', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true }
+      }
+    }
+  });
+
+  const catCounts = COMPONENTS.map(c => DEFECTS.filter(d => d.component === c).length);
+  new Chart(document.getElementById('catChart'), {
+    type: 'bar',
+    data: {
+      labels: COMPONENTS.map(c => c.split('/')[0].trim()),
+      datasets: [{ data: catCounts, backgroundColor: '#3d8fe0', borderRadius: 4 }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#4a5568', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true },
+        y: { ticks: { color: '#94a3b8', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { display: false } }
+      }
+    }
+  });
+
+  const rtimes = SEVERITIES.map(s => {
+    const d = DEFECTS.filter(x => x.severity === s && x.resolution_hrs != null);
+    return d.length ? Math.round(d.reduce((a, x) => a + x.resolution_hrs, 0) / d.length) : 0;
+  });
+  new Chart(document.getElementById('rtimeChart'), {
+    type: 'bar',
+    data: {
+      labels: SEVERITIES,
+      datasets: [{ data: rtimes, backgroundColor: ['#ef4444','#f59e0b','#3d8fe0','#22c55e'], borderRadius: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#4a5568', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { display: false } },
+        y: { ticks: { callback: v => v + 'h', color: '#4a5568', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: 'rgba(255,255,255,0.06)' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+// ── SQL ENGINE ── //
+function setQuery(q) {
+  document.getElementById('sql-input').value = q;
+  navigate('sql');
+}
+
+function runSQL() {
+  const raw = document.getElementById('sql-input').value.trim();
+  const t0 = performance.now();
+  try {
+    const result = executeSQL(raw);
+    const elapsed = ((performance.now() - t0)).toFixed(1);
+    renderSQLResults(result, elapsed);
+  } catch (e) {
+    document.getElementById('sql-result-info').textContent = 'Query Error';
+    document.getElementById('sql-exec-time').textContent = '';
+    document.getElementById('sql-result-body').innerHTML = `<div class="sql-error">ERROR: ${e.message}</div>`;
+  }
+}
+
+function executeSQL(raw) {
+  const sql = raw.replace(/\s+/g, ' ').trim();
+  if (!/^SELECT/i.test(sql)) throw new Error('Only SELECT statements are supported.');
+  if (!/FROM\s+defects/i.test(sql)) throw new Error('Unknown table. Use FROM defects.');
+
+  // Parse SELECT columns
+  const selectMatch = sql.match(/^SELECT\s+(.*?)\s+FROM\s+defects/i);
+  if (!selectMatch) throw new Error('Invalid SELECT syntax.');
+  const selectClause = selectMatch[1].trim();
+
+  // Parse WHERE
+  let data = [...DEFECTS];
+  const whereMatch = sql.match(/WHERE\s+(.*?)(?:\s+GROUP\s+BY|\s+ORDER\s+BY|\s+LIMIT|$)/i);
+  if (whereMatch) {
+    data = applyWhere(data, whereMatch[1].trim());
+  }
+
+  // Parse GROUP BY
+  const groupMatch = sql.match(/GROUP\s+BY\s+(\w+)/i);
+  if (groupMatch) {
+    return applyGroupBy(data, selectClause, groupMatch[1]);
+  }
+
+  // Parse ORDER BY
+  const orderMatch = sql.match(/ORDER\s+BY\s+(\w+)(?:\s+(ASC|DESC))?/i);
+  if (orderMatch) {
+    const col = orderMatch[1].toLowerCase();
+    const dir = (orderMatch[2] || 'ASC').toUpperCase();
+    data.sort((a, b) => {
+      const av = a[col] ?? '', bv = b[col] ?? '';
+      const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+      return dir === 'ASC' ? cmp : -cmp;
+    });
+  }
+
+  // Parse LIMIT
+  const limitMatch = sql.match(/LIMIT\s+(\d+)/i);
+  if (limitMatch) data = data.slice(0, parseInt(limitMatch[1]));
+
+  // Project columns
+  if (selectClause === '*') return { columns: Object.keys(DEFECTS[0]), rows: data.map(d => ({ ...d })) };
+  const cols = selectClause.split(',').map(c => c.trim().toLowerCase());
+  return { columns: cols, rows: data.map(d => Object.fromEntries(cols.map(c => [c, d[c] ?? null]))) };
+}
+
+function applyWhere(data, clause) {
+  const parts = clause.split(/\s+(AND|OR)\s+/i);
+  const conditions = [];
+  const operators = [];
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i].toUpperCase() === 'AND' || parts[i].toUpperCase() === 'OR') operators.push(parts[i].toUpperCase());
+    else conditions.push(parts[i]);
+  }
+  return data.filter(row => {
+    let result = evalCondition(row, conditions[0]);
+    for (let i = 1; i < conditions.length; i++) {
+      if (operators[i - 1] === 'AND') result = result && evalCondition(row, conditions[i]);
+      else result = result || evalCondition(row, conditions[i]);
+    }
+    return result;
+  });
+}
+
+function evalCondition(row, cond) {
+  const neqMatch = cond.match(/(\w+)\s*!=\s*'([^']*)'/i);
+  if (neqMatch) {
+    const [, col, val] = neqMatch;
+    return (row[col.toLowerCase()] ?? '') !== val;
+  }
+  const eqMatch = cond.match(/(\w+)\s*=\s*'([^']*)'/i);
+  if (eqMatch) {
+    const [, col, val] = eqMatch;
+    return (row[col.toLowerCase()] ?? '') === val;
+  }
+  const likeMatch = cond.match(/(\w+)\s+LIKE\s+'([^']*)'/i);
+  if (likeMatch) {
+    const [, col, val] = likeMatch;
+    return (row[col.toLowerCase()] ?? '').toString().toLowerCase().includes(val.replace(/%/g, '').toLowerCase());
+  }
+  const numMatch = cond.match(/(\w+)\s*([><=!]+)\s*(\d+)/i);
+  if (numMatch) {
+    const [, col, op, val] = numMatch;
+    const rv = parseFloat(row[col.toLowerCase()]);
+    const nv = parseFloat(val);
+    if (op === '>') return rv > nv;
+    if (op === '<') return rv < nv;
+    if (op === '>=') return rv >= nv;
+    if (op === '<=') return rv <= nv;
+    if (op === '=') return rv === nv;
+  }
+  return true;
+}
+
+function applyGroupBy(data, selectClause, groupCol) {
+  const groups = {};
+  data.forEach(row => {
+    const key = row[groupCol] ?? 'NULL';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(row);
+  });
+
+  const cols = selectClause.split(',').map(c => c.trim());
+  const resultCols = cols.map(c => {
+    if (/COUNT\(\*\)/i.test(c)) return (c.match(/AS\s+(\w+)/i) || [, 'count'])[1];
+    if (/AVG\((\w+)\)/i.test(c)) { const m = c.match(/AS\s+(\w+)/i); return m ? m[1] : 'avg_' + c.match(/AVG\((\w+)\)/i)[1]; }
+    return c.replace(/AS\s+\w+/i, '').trim().toLowerCase();
+  });
+
+  const rows = Object.entries(groups).map(([key, group]) => {
+    const row = {};
+    cols.forEach((c, i) => {
+      const colName = resultCols[i];
+      if (/COUNT\(\*\)/i.test(c)) row[colName] = group.length;
+      else if (/AVG\((\w+)\)/i.test(c)) {
+        const numCol = c.match(/AVG\((\w+)\)/i)[1];
+        const vals = group.map(r => r[numCol]).filter(v => v != null);
+        row[colName] = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+      } else row[colName] = key;
+    });
+    return row;
+  });
+
+  // ORDER BY after GROUP BY
+  return { columns: resultCols, rows };
+}
+
+function renderSQLResults(result, elapsed) {
+  const { columns, rows } = result;
+  document.getElementById('sql-result-info').textContent = `${rows.length} row${rows.length !== 1 ? 's' : ''} returned`;
+  document.getElementById('sql-exec-time').textContent = `${elapsed}ms`;
+  if (rows.length === 0) {
+    document.getElementById('sql-result-body').innerHTML = '<div class="empty-state">Query returned 0 rows.</div>';
+    return;
+  }
+  const table = `
+    <div style="overflow-x:auto;">
+    <table>
+      <thead><tr>${columns.map(c => `<th>${c.toUpperCase()}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${rows.map(r => `<tr>${columns.map(c => {
+          const v = r[c];
+          if (c === 'severity' && v) return `<td>${sevBadge(v)}</td>`;
+          if (c === 'status' && v) return `<td>${statusBadge(v)}</td>`;
+          if (v == null) return `<td style="color:var(--text3); font-family:var(--mono); font-size:11px;">NULL</td>`;
+          return `<td class="mono" style="font-size:11px;">${v}</td>`;
+        }).join('')}</tr>`).join('')}
+      </tbody>
+    </table>
+    </div>`;
+  document.getElementById('sql-result-body').innerHTML = table;
+}
+
+// ── Allow Enter+Ctrl to run query ── //
+document.getElementById('sql-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runSQL(); }
+});
+
+// ── Init ── //
+animateCounter('kpi-total', totalDefects);
+animateCounter('kpi-critical', criticalHigh);
+animateCounter('kpi-rate', ratePercent, '%');
+animateCounter('kpi-avg', avgResolution);
+buildRecentTable();
+renderTracker();
+buildDashboardCharts();
+</script>
+</body>
+</html>
