@@ -1,6 +1,6 @@
 # QualityPulse — Fahrzeugqualitäts-Dashboard
 
-**Vehicle Quality Intelligence Dashboard** — A full-stack web application simulating a real-time automotive defect management and analytics system, modelled on OEM quality digitalization workflows.
+**Vehicle Quality Intelligence Dashboard** — A single-page, entirely client-side web application simulating an automotive defect management and analytics workflow, modelled on OEM quality digitalization processes.
 
 > Built entirely in Vanilla JavaScript, HTML5, and CSS3 — no frameworks, no backend, no dependencies except Chart.js.
 
@@ -32,10 +32,10 @@ Five interactive Chart.js visualizations:
 - Severity-based resolution time analysis
 
 ### Custom SQL Query Engine
-The standout feature: a SQL engine built from scratch in JavaScript supporting a meaningful subset of Oracle SQL syntax:
+The standout feature: a hand-written SQL-subset query interpreter, built from scratch in JavaScript with no libraries. It parses each clause with regular expressions and evaluates the result against an in-memory dataset. The syntax is ANSI-style and not Oracle-specific:
 
 ```sql
-SELECT model, COUNT(*) AS total FROM defects WHERE severity = 'Critical' GROUP BY model ORDER BY total DESC LIMIT 5
+SELECT model, COUNT(*) AS total FROM defects WHERE severity = 'Critical' GROUP BY model
 ```
 
 **Supported syntax:**
@@ -48,6 +48,12 @@ SELECT model, COUNT(*) AS total FROM defects WHERE severity = 'Critical' GROUP B
 
 Results are rendered in a formatted table with execution time displayed in milliseconds.
 
+**Known limitations** (it is a regex interpreter, not a real parser):
+- `ORDER BY` and `LIMIT` are ignored when `GROUP BY` is present — grouped results come back unsorted and unlimited.
+- `WHERE` has no operator precedence and does not support parentheses; `AND` / `OR` are folded strictly left to right.
+- Aliases (`AS`) are only applied inside `GROUP BY` projections.
+- A condition the regexes cannot parse evaluates to `true` rather than raising an error.
+
 ---
 
 ## Tech Stack
@@ -56,7 +62,7 @@ Results are rendered in a formatted table with execution time displayed in milli
 |---|---|
 | Frontend | JavaScript (ES6+), HTML5, CSS3 |
 | Charts | Chart.js 4.4.1 |
-| Database | Oracle SQL (custom in-memory engine) |
+| Data layer | In-memory JavaScript array (60 generated records) |
 | UI | Dark theme, responsive grid layout, CSS animations |
 | Fonts | Inter, Barlow Condensed, IBM Plex Mono |
 
@@ -69,13 +75,14 @@ Defect records contain the following fields:
 | Field | Type | Description |
 |---|---|---|
 | `id` | String | Unique defect identifier (e.g. DEF-001) |
-| `model` | String | BMW model line |
-| `component` | String | Component category (ADAS, Electronics, Powertrain, etc.) |
-| `severity` | String | Critical / High / Medium / Low |
-| `status` | String | Open / In Progress / Resolved |
-| `reported_date` | String | Date reported |
-| `resolution_days` | Number | Days to resolve (null if open) |
 | `description` | String | Defect description |
+| `model` | String | BMW model line |
+| `component` | String | Component category (ADAS / Safety, Electronics, Powertrain, etc.) |
+| `severity` | String | Critical / High / Medium / Low |
+| `status` | String | Open / In Progress / Resolved / Closed |
+| `assignee` | String | Engineer the defect is assigned to |
+| `created` | String | Date reported, `YYYY-MM-DD` |
+| `resolution_hrs` | Number | Hours to resolve (`null` while Open or In Progress) |
 
 ---
 
@@ -86,13 +93,13 @@ Defect records contain the following fields:
 SELECT * FROM defects WHERE severity = 'Critical'
 
 -- Average resolution time by model
-SELECT model, AVG(resolution_days) AS avg_days FROM defects GROUP BY model ORDER BY avg_days ASC
+SELECT model, AVG(resolution_hrs) AS avg_hrs FROM defects GROUP BY model
 
--- Open defects in ADAS or Powertrain
-SELECT id, model, component, severity FROM defects WHERE status = 'Open' AND (component = 'ADAS' OR component = 'Powertrain') LIMIT 10
+-- Recent open defects (see Known Limitations re: parentheses)
+SELECT id, model, component, severity, assignee FROM defects WHERE status = 'Open' ORDER BY created DESC LIMIT 10
 
--- Resolution rate by severity
-SELECT severity, COUNT(*) AS total FROM defects GROUP BY severity ORDER BY total DESC
+-- Defect count by severity
+SELECT severity, COUNT(*) AS total FROM defects GROUP BY severity
 ```
 
 ---
